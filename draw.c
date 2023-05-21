@@ -18,6 +18,8 @@ void dir_back(WINDOW *menu_win);
 #define MAX_FILE_NAME_SIZE 100
 #define OFFSET 40
 
+char PATH[MAX_FILE_NAME_SIZE];
+
 int startx = 0;
 int starty = 0;
 char *file_list[MAX_FILE_NUMBER];
@@ -35,6 +37,7 @@ int main() {
   int choice = 0;
   int c;
 
+  getcwd(PATH, MAX_FILE_NAME_SIZE);
   initscr();
   curs_set(0);
   clear();
@@ -91,8 +94,16 @@ int main() {
 }
 
 void dir_back(WINDOW *menu_win) {
-  char *selection = {file_list[highlight - 1]};
-  wprintw(menu_win, "%s", selection);
+  // char *selection = {file_list[highlight - 1]};
+  // wprintw(menu_win, "%s", selection);
+  // wprintw(menu_win, "%s", PATH);
+  for (int i = 0; i < sizeof(PATH); i++) {
+    wprintw(menu_win, "%d", i);
+    wprintw(menu_win, "%c", PATH[i]);
+  }
+
+  // for (int i = (sizeof(PATH) - 1); i > -1; i--) {
+  // }
 }
 
 void get_dir_info() {
@@ -103,7 +114,7 @@ void get_dir_info() {
   }
 
   // Reset dir logic
-  d = opendir(".");
+  d = opendir(PATH);
   iter = 0;
   file_list_lenght = 0;
   if (d) {
