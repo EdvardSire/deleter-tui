@@ -31,8 +31,8 @@ int main() {
 
   initscr();
   clear();
-  noecho();
-  cbreak(); /* Line buffering disabled. pass on everything */
+  // noecho();
+  // cbreak(); /* Line buffering disabled. pass on everything */
 
   get_dir_info();
   menu_win = newwin(LINES, COLS, starty, startx);
@@ -41,42 +41,30 @@ int main() {
            "Use arrow keys to go up and down, Press enter to select a choice");
   refresh();
   print_menu(menu_win, highlight);
-  // while (1) {
-  //   c = wgetch(menu_win);
-  //   switch (c) {
-  //   case KEY_UP:
-  //     if (highlight == 1)
-  //       highlight = n_choices;
-  //     else
-  //       --highlight;
-  //     break;
-  //   case KEY_DOWN:
-  //     if (highlight == n_choices)
-  //       highlight = 1;
-  //     else
-  //       ++highlight;
-  //     break;
-  //   case 10:
-  //     choice = highlight;
-  //     break;
-  //   default:
-  //     mvprintw(24, 0,
-  //              "Charcter pressed is = %3d Hopefully it can be printed as
-  //              '%c'", c, c);
-  //     refresh();
-  //     break;
-  //   }
-  //   print_menu(menu_win, highlight, navigation_list);
-  //   if (choice != 0) /* User did a choice come out of the infinite loop */
-  //     break;
-  // }
-  // mvprintw(23, 0, "You chose choice %d with choice string %s\n", choice,
-  //          choices[choice - 1]);
-  wgetch(menu_win);
-  clrtoeol();
-  refresh();
+  while (1) {
+    c = wgetch(menu_win);
+    switch (c) {
+    case KEY_UP:
+      if (highlight == 1)
+        highlight = file_list_lenght;
+      else
+        --highlight;
+      break;
+    case KEY_DOWN:
+      if (highlight == file_list_lenght)
+        highlight = 1;
+      else
+        ++highlight;
+      break;
+    default:
+      refresh();
+      break;
+    }
+    print_menu(menu_win, highlight);
+  }
+  // clrtoeol();
+  // refresh();
   endwin();
-  return 0;
 }
 
 void get_dir_info() {
