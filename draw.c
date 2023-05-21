@@ -5,10 +5,13 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 //
 void print_menu(WINDOW *menu_win, int highlight);
 void get_dir_info();
+void change_dir();
+void dir_back(WINDOW *menu_win);
 ///
 #define MAX_FILE_NUMBER 10
 #define OFFSET 40
@@ -22,29 +25,37 @@ DIR *d;
 struct dirent *dir;
 struct stat stat_buffer;
 int iter = 0;
+int highlight = 1;
 
 int main() {
   WINDOW *menu_win;
-  int highlight = 1;
   int choice = 0;
   int c;
 
   initscr();
+  curs_set(0);
   clear();
-  // noecho();
-  // cbreak(); /* Line buffering disabled. pass on everything */
-
-  get_dir_info();
   menu_win = newwin(LINES, COLS, starty, startx);
-  keypad(menu_win, TRUE);
-  mvprintw(0, 0,
-           "Use arrow keys to go up and down, Press enter to select a choice");
-  refresh();
-  print_menu(menu_win, highlight);
+  keypad(menu_win, true); // Arrow suuport
+  noecho();
+  // break(); /* Line buffering disabled. pass on everything */
+  get_dir_info();
+
   while (1) {
+    print_menu(menu_win, highlight);
     c = wgetch(menu_win);
     switch (c) {
+    case 'q':
+      endwin();
+      return 0;
+      break;
     case KEY_UP:
+      if (highlight == 1)
+        highlight = file_list_lenght;
+      else
+        --highlight;
+      break;
+    case 'k': // Same as KEY_UP
       if (highlight == 1)
         highlight = file_list_lenght;
       else
@@ -56,15 +67,29 @@ int main() {
       else
         ++highlight;
       break;
+    case 'j':
+      if (highlight == file_list_lenght)
+        highlight = 1;
+      else
+        ++highlight;
+      break;
+    case 'l':
+      endwin();
+      return 0;
+      break;
+    case 'h':
+      dir_back(menu_win);
+      break;
     default:
       refresh();
       break;
     }
-    print_menu(menu_win, highlight);
   }
-  // clrtoeol();
-  // refresh();
-  endwin();
+}
+
+void dir_back(WINDOW *menu_win) {
+  char *selection = {file_list[highlight - 1]};
+  wprintw(menu_win, selection);
 }
 
 void get_dir_info() {
@@ -93,6 +118,7 @@ void print_menu(WINDOW *menu_win, int highlight) {
 
   x = 2;
   y = 2;
+  wattroff(menu_win, A_REVERSE);
   box(menu_win, 0, 0);
   for (i = 0; i < file_list_lenght; ++i) {
     if (highlight == i + 1) /* High light the present choice */
@@ -101,9 +127,10 @@ void print_menu(WINDOW *menu_win, int highlight) {
       mvwprintw(menu_win, y, x, "%s", file_list[i]);
       mvwprintw(menu_win, y, x + OFFSET, "%jd", file_size_list[i]);
       wattroff(menu_win, A_REVERSE);
-    } else
+    } else {
+      mvwprintw(menu_win, y, x, "%s", file_list[i]);
       mvwprintw(menu_win, y, x + OFFSET, "%jd", file_size_list[i]);
-    mvwprintw(menu_win, y, x, "%s", file_list[i]);
+    }
     ++y;
   }
   wrefresh(menu_win);
