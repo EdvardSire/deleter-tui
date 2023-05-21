@@ -3,6 +3,7 @@
 #include <ncurses.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -14,13 +15,15 @@ void change_dir();
 void dir_back(WINDOW *menu_win);
 ///
 #define MAX_FILE_NUMBER 10
+#define MAX_FILE_NAME_SIZE 100
 #define OFFSET 40
 
 int startx = 0;
 int starty = 0;
-char *file_list[MAX_FILE_NUMBER][256] = {};
-intmax_t file_size_list[MAX_FILE_NUMBER] = {};
+char *file_list[MAX_FILE_NUMBER];
 int file_list_lenght = 0;
+
+intmax_t file_size_list[MAX_FILE_NUMBER] = {};
 DIR *d;
 struct dirent *dir;
 struct stat stat_buffer;
@@ -89,22 +92,27 @@ int main() {
 
 void dir_back(WINDOW *menu_win) {
   char *selection = {file_list[highlight - 1]};
-  wprintw(menu_win, selection);
+  wprintw(menu_win, "%s", selection);
 }
 
 void get_dir_info() {
+
+  // Free up string array
+  for (int i = 0; i < file_list_lenght; i++) {
+    free(file_list[i]);
+  }
+
+  // Reset dir logic
+  d = opendir(".");
   iter = 0;
   file_list_lenght = 0;
-  d = opendir(".");
   if (d) {
     while ((dir = readdir(d)) != NULL) {
-      stat(dir->d_name, &stat_buffer);
-
+      file_list[iter] = malloc(MAX_FILE_NAME_SIZE * sizeof(char));
       strcpy(file_list[iter], dir->d_name);
-      file_size_list[iter] = stat_buffer.st_size;
 
-      // printf("%jd", stat_buffer.st_size);
-      // printf("\n");
+      stat(dir->d_name, &stat_buffer);
+      file_size_list[iter] = stat_buffer.st_size;
 
       file_list_lenght++;
       iter++;
