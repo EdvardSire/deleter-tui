@@ -1,18 +1,12 @@
 #include <curses.h>
 #include <dirent.h>
 #include <ncurses.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
-//
-void print_menu(WINDOW *menu_win, int highlight);
-void change_dir();
-void dir_back(WINDOW *menu_win);
-///
 #define MAX_FILE_NUMBER 100
 #define MAX_FILE_NAME_SIZE 100
 #define OFFSET 40
@@ -27,13 +21,69 @@ struct dirent *dir;
 struct stat stat_buffer;
 int iter = 0;
 int highlight = 1;
+DIR *d;
 
-void dir_back(WINDOW *menu_win) {}
+void setup() {
+  initscr();
+  curs_set(0);
+  clear();
+  noecho();
+}
 
-void dir_forward() {
-  // char *selection = {file_list[highlight - 1]};
-  // wprintw(menu_win, "%s", selection);
-  // wprintw(menu_win, "%s", PATH);
+void dir_forward(WINDOW *menu_win) {
+  char *selection = file_list[(highlight - 1)];
+  chdir(selection);
+}
+
+// Return values
+// 0 -> nothing
+// 1 -> reindex dirs
+// 2 -> close
+int handle_input(WINDOW *menu_win) {
+  int input_char = wgetch(menu_win);
+  switch (input_char) {
+  case 'q':
+    endwin();
+    return 2;
+  case KEY_UP:
+    if (highlight == 1)
+      highlight = file_list_lenght;
+    else
+      --highlight;
+    break;
+  case 'k': // Same as KEY_UP
+    if (highlight == 1)
+      highlight = file_list_lenght;
+    else
+      --highlight;
+    break;
+  case KEY_DOWN:
+    if (highlight == file_list_lenght)
+      highlight = 1;
+    else
+      ++highlight;
+    break;
+  case 'j':
+    if (highlight == file_list_lenght)
+      highlight = 1;
+    else
+      ++highlight;
+    break;
+  case 'l':
+    dir_forward(menu_win);
+    highlight = 1;
+    return 1;
+    break;
+  case 'h':
+    chdir("..");
+    highlight = 1;
+    return 1;
+    break;
+  default:
+    refresh();
+    break;
+  }
+  return 0;
 }
 
 void get_dir_info(WINDOW *menu_win) {
@@ -43,9 +93,6 @@ void get_dir_info(WINDOW *menu_win) {
     free(file_list[i]);
   }
 
-  // Reset dir logic
-  // wprintw(print_menu, PATH);
-  DIR *d;
   d = opendir(".");
   iter = 0;
   file_list_lenght = 0;
@@ -88,63 +135,19 @@ void print_menu(WINDOW *menu_win, int highlight) {
 }
 int main() {
   WINDOW *menu_win;
-  int choice = 0;
-  int c;
-
-  initscr();
-  curs_set(0);
-  clear();
+  setup();
   menu_win = newwin(LINES, COLS, starty, startx);
-  keypad(menu_win, true); // Arrow suuport
-  noecho();
-  // break(); /* Line buffering disabled. pass on everything */
+  keypad(menu_win, true); // Arrows
 
-  while (1) {
+  int state = 1;
+  while (true) {
+    if (state == 1)
+      get_dir_info(menu_win);
     wclear(menu_win);
-    get_dir_info(menu_win);
-    clear();
     print_menu(menu_win, highlight);
-    c = wgetch(menu_win);
-    switch (c) {
-    case 'q':
-      endwin();
+
+    state = handle_input(menu_win);
+    if (state == 2)
       return 0;
-      break;
-    case KEY_UP:
-      if (highlight == 1)
-        highlight = file_list_lenght;
-      else
-        --highlight;
-      break;
-    case 'k': // Same as KEY_UP
-      if (highlight == 1)
-        highlight = file_list_lenght;
-      else
-        --highlight;
-      break;
-    case KEY_DOWN:
-      if (highlight == file_list_lenght)
-        highlight = 1;
-      else
-        ++highlight;
-      break;
-    case 'j':
-      if (highlight == file_list_lenght)
-        highlight = 1;
-      else
-        ++highlight;
-      break;
-    case 'l':
-      endwin();
-      return 0;
-      break;
-    case 'h':
-      chdir("..");
-      highlight = 1;
-      break;
-    default:
-      refresh();
-      break;
-    }
   }
 }
