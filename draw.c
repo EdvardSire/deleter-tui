@@ -142,16 +142,23 @@ void print_menu(WINDOW *menu_win, int highlight) {
   box(menu_win, 0, 0);
   for (i = 0; i < file_list_lenght; ++i) {
     if (highlight == i + 1) /* High light the present choice */
-    {
       wattron(menu_win, A_REVERSE);
-      mvwprintw(menu_win, y, x, "%s", file_list[i]);
-      mvwprintw(menu_win, y, x + OFFSET, "%jd", file_size_list[i]);
-      wattroff(menu_win, A_REVERSE);
-    } else {
-      mvwprintw(menu_win, y, x, "%s", file_list[i]);
-      mvwprintw(menu_win, y, x + OFFSET, "%jd", file_size_list[i]);
-    }
+    mvwprintw(menu_win, y, x, "%s", file_list[i]);
+    mvwprintw(menu_win, y, x + OFFSET, "%jd", file_size_list[i]);
+    wattroff(menu_win, A_REVERSE);
     ++y;
   }
   wrefresh(menu_win);
+}
+
+// https://programanddesign.com/cpp/human-readable-file-size-in-c/
+char *readable_fs(double size /*in bytes*/, char *buf) {
+  int i = 0;
+  const char *units[] = {"B", "kB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"};
+  while (size > 1024) {
+    size /= 1024;
+    i++;
+  }
+  sprintf(buf, "%.*f %s", i, size, units[i]);
+  return buf;
 }
