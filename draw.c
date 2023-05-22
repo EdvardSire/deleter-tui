@@ -1,10 +1,8 @@
-#include <curses.h>
 #include <dirent.h>
 #include <ncurses.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/stat.h>
 #include <unistd.h>
 
 void setup();
@@ -18,7 +16,7 @@ int handle_input(WINDOW *menu_win);
 #define OFFSET 40
 
 char *file_list[MAX_FILE_NUMBER];
-intmax_t file_size_list[MAX_FILE_NUMBER] = {};
+char *file_size_list[MAX_FILE_NUMBER];
 int file_list_lenght = 0;
 
 int highlight = 1;
@@ -54,14 +52,27 @@ void dir_forward(WINDOW *menu_win) {
   chdir(selection);
 }
 
+void add_dir_size(char *name, int iter) {
+  FILE *fp;
+  char *buf[MAX_FILE_NAME_SIZE];
+  char command[MAX_FILE_NAME_SIZE];
+  strcpy(command, "sudo /usr/bin/du -bd0 -h ");
+  strcat(command, name);
+  strcat(command, " | awk '$0=$1'");
+  fp = popen(command, "r");
+  fgets(buf, sizeof(buf), fp);
+  strcpy(file_size_list[iter], buf);
+  pclose(fp);
+}
+
 void get_dir_info(WINDOW *menu_win) {
   DIR *d;
   struct dirent *dir;
-  struct stat stat_buffer;
 
   // Free up string array
   for (int i = 0; i < file_list_lenght; i++) {
     free(file_list[i]);
+    free(file_size_list[i]);
   }
 
   d = opendir(".");
@@ -72,8 +83,8 @@ void get_dir_info(WINDOW *menu_win) {
       file_list[iter] = malloc(MAX_FILE_NAME_SIZE * sizeof(char));
       strcpy(file_list[iter], dir->d_name);
 
-      stat(dir->d_name, &stat_buffer);
-      file_size_list[iter] = stat_buffer.st_size;
+      file_size_list[iter] = malloc(MAX_FILE_NAME_SIZE * sizeof(char));
+      add_dir_size(dir->d_name, iter);
 
       file_list_lenght++;
       iter++;
@@ -135,6 +146,7 @@ int handle_input(WINDOW *menu_win) {
 
 void print_menu(WINDOW *menu_win, int highlight) {
   int x, y, i;
+  char *readable_buf[10];
 
   x = 2;
   y = 2;
@@ -144,21 +156,9 @@ void print_menu(WINDOW *menu_win, int highlight) {
     if (highlight == i + 1) /* High light the present choice */
       wattron(menu_win, A_REVERSE);
     mvwprintw(menu_win, y, x, "%s", file_list[i]);
-    mvwprintw(menu_win, y, x + OFFSET, "%jd", file_size_list[i]);
+    mvwprintw(menu_win, y, x + OFFSET, "%s", file_size_list[i]);
     wattroff(menu_win, A_REVERSE);
     ++y;
   }
   wrefresh(menu_win);
-}
-
-// https://programanddesign.com/cpp/human-readable-file-size-in-c/
-char *readable_fs(double size /*in bytes*/, char *buf) {
-  int i = 0;
-  const char *units[] = {"B", "kB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"};
-  while (size > 1024) {
-    size /= 1024;
-    i++;
-  }
-  sprintf(buf, "%.*f %s", i, size, units[i]);
-  return buf;
 }
