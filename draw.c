@@ -1,3 +1,4 @@
+#include <curses.h>
 #include <dirent.h>
 #include <ncurses.h>
 #include <stdio.h>
@@ -5,21 +6,25 @@
 #include <string.h>
 #include <unistd.h>
 
+// Declarations
 void setup();
 void dir_forward(WINDOW *menu_win);
-void get_dir_info(WINDOW *menu_win);
+void update_file_size(char *name, const int *iter);
 void print_menu(WINDOW *menu_win, int highlight);
 int handle_input(WINDOW *menu_win);
+void get_dir_info(WINDOW *menu_win);
 
+// Macros
 #define MAX_FILE_NUMBER 100
 #define MAX_FILE_NAME_SIZE 100
-#define OFFSET 40
+#define FILE_SIZE_OFFSET 40
+#define LEFT_PADDING 2
 
-char *file_list[MAX_FILE_NUMBER];
-char *file_size_list[MAX_FILE_NUMBER];
-int file_list_lenght = 0;
-
-int highlight = 1;
+// Global state instead of passing struct*'s around
+char *file_names[MAX_FILE_NUMBER];
+char *file_sizes[MAX_FILE_NUMBER];
+int number_of_files = 0;
+int current_selection = 1;
 
 int main() {
   WINDOW *menu_win;
@@ -31,8 +36,7 @@ int main() {
   while (true) {
     if (state == 1)
       get_dir_info(menu_win);
-    wclear(menu_win);
-    print_menu(menu_win, highlight);
+    print_menu(menu_win, current_selection);
 
     state = handle_input(menu_win);
     if (state == 2)
@@ -43,16 +47,15 @@ int main() {
 void setup() {
   initscr();
   curs_set(0);
-  clear();
   noecho();
 }
 
 void dir_forward(WINDOW *menu_win) {
-  char *selection = file_list[(highlight - 1)];
+  char *selection = file_names[(current_selection - 1)];
   chdir(selection);
 }
 
-void add_dir_size(char *name, int iter) {
+void update_file_size(char *name, const int *iter) {
   FILE *fp;
   char *buf[MAX_FILE_NAME_SIZE];
   char command[MAX_FILE_NAME_SIZE];
@@ -61,7 +64,7 @@ void add_dir_size(char *name, int iter) {
   strcat(command, " | awk '$0=$1'");
   fp = popen(command, "r");
   fgets(buf, sizeof(buf), fp);
-  strcpy(file_size_list[iter], buf);
+  strcpy(file_sizes[*iter], buf);
   pclose(fp);
 }
 
@@ -70,27 +73,43 @@ void get_dir_info(WINDOW *menu_win) {
   struct dirent *dir;
 
   // Free up string array
-  for (int i = 0; i < file_list_lenght; i++) {
-    free(file_list[i]);
-    free(file_size_list[i]);
+  for (int i = 0; i < number_of_files; i++) {
+    free(file_names[i]);
+    free(file_sizes[i]);
   }
 
   d = opendir(".");
   int iter = 0;
-  file_list_lenght = 0;
+  number_of_files = 0;
   if (d) {
     while ((dir = readdir(d)) != NULL) {
-      file_list[iter] = malloc(MAX_FILE_NAME_SIZE * sizeof(char));
-      strcpy(file_list[iter], dir->d_name);
+      file_names[iter] = malloc(MAX_FILE_NAME_SIZE * sizeof(char));
+      strcpy(file_names[iter], dir->d_name);
 
-      file_size_list[iter] = malloc(MAX_FILE_NAME_SIZE * sizeof(char));
-      add_dir_size(dir->d_name, iter);
+      file_sizes[iter] = malloc(MAX_FILE_NAME_SIZE * sizeof(char));
+      update_file_size(dir->d_name, &iter);
 
-      file_list_lenght++;
+      number_of_files++;
       iter++;
     }
     closedir(d);
   }
+}
+
+void print_menu(WINDOW *menu_win, int highlight) {
+  wclear(menu_win);
+
+  int col = 2;
+  for (int i = 0; i < number_of_files; ++i) {
+    if (highlight == i + 1) /* High light the present choice */
+      wattron(menu_win, A_REVERSE);
+    mvwprintw(menu_win, col, LEFT_PADDING, "%s", file_names[i]);
+    mvwprintw(menu_win, col, LEFT_PADDING + FILE_SIZE_OFFSET, "%s",
+              file_sizes[i]);
+    wattroff(menu_win, A_REVERSE);
+    ++col;
+  }
+  box(menu_win, 0, 0);
 }
 
 // Return values
@@ -104,61 +123,37 @@ int handle_input(WINDOW *menu_win) {
     endwin();
     return 2;
   case KEY_UP:
-    if (highlight == 1)
-      highlight = file_list_lenght;
+    if (current_selection == 1)
+      current_selection = number_of_files;
     else
-      --highlight;
+      --current_selection;
     break;
   case 'k': // Same as KEY_UP
-    if (highlight == 1)
-      highlight = file_list_lenght;
+    if (current_selection == 1)
+      current_selection = number_of_files;
     else
-      --highlight;
+      --current_selection;
     break;
   case KEY_DOWN:
-    if (highlight == file_list_lenght)
-      highlight = 1;
+    if (current_selection == number_of_files)
+      current_selection = 1;
     else
-      ++highlight;
+      ++current_selection;
     break;
   case 'j':
-    if (highlight == file_list_lenght)
-      highlight = 1;
+    if (current_selection == number_of_files)
+      current_selection = 1;
     else
-      ++highlight;
+      ++current_selection;
     break;
   case 'l':
     dir_forward(menu_win);
-    highlight = 1;
+    current_selection = 1;
     return 1;
-    break;
   case 'h':
     chdir("..");
-    highlight = 1;
+    current_selection = 1;
     return 1;
-    break;
-  default:
-    refresh();
-    break;
   }
   return 0;
-}
-
-void print_menu(WINDOW *menu_win, int highlight) {
-  int x, y, i;
-  char *readable_buf[10];
-
-  x = 2;
-  y = 2;
-  wattroff(menu_win, A_REVERSE);
-  box(menu_win, 0, 0);
-  for (i = 0; i < file_list_lenght; ++i) {
-    if (highlight == i + 1) /* High light the present choice */
-      wattron(menu_win, A_REVERSE);
-    mvwprintw(menu_win, y, x, "%s", file_list[i]);
-    mvwprintw(menu_win, y, x + OFFSET, "%s", file_size_list[i]);
-    wattroff(menu_win, A_REVERSE);
-    ++y;
-  }
-  wrefresh(menu_win);
 }
