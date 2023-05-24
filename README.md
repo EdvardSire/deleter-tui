@@ -4,3 +4,9 @@ vim-style keybindings that reports recursive file size.
 
 
 IMAGE HERE
+
+
+### Todo
+- [ ] Migrate to du c implementation
+- [ ] Rewrite without global variables
+- [ ] Reduce memory footprint?
