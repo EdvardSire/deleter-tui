@@ -1,18 +1,15 @@
 CC := gcc
+CC_FLAGS := -Wall
 
 program: draw.o
-	gcc -lncurses draw.o -o program
+	$(CC) $(CC_FLAGS) -lncurses draw.o -o program
 	./program
 
 draw.o:
-	gcc -c draw.c -o draw.o
+	$(CC) $(CC_FLAGS) -c draw.c -o draw.o
 
 .PHONY: debug
 debug:
-	gcc -g draw.c -lncurses -o program
+	$(CC) $(CC_FLAGS) -g draw.c -lncurses -o program
 	lldb program
 
-.PHONY: test
-test:
-	gcc test.c -o program
-	./program
