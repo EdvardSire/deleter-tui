@@ -1,15 +1,29 @@
 CC := gcc
 CC_FLAGS := -Wall
+CC_DEBUG_FLAGS := -g
 
-program: draw.o
-	$(CC) $(CC_FLAGS) -lncurses draw.o -o program
+SRCS := $(wildcard *.c)
+OBJS := $(SRCS:c=o)
+LIBS := ncurses
+TARGET := program
+
+all: $(TARGET)
+
+$(TARGET): $(OBJS)
+	$(CC) $(CC_FLAGS) -l$(LIBS) -o $@ $(OBJS)
 	./program
 
-draw.o:
-	$(CC) $(CC_FLAGS) -c draw.c -o draw.o
+# draw.o:
+# 	$(CC) $(CC_FLAGS) -c draw.c -o draw.o
+%.o: %.c
+	$(CC) $(CC_FLAGS) -c $< -o $@
 
 .PHONY: debug
 debug:
-	$(CC) $(CC_FLAGS) -g draw.c -lncurses -o program
+	$(CC) $(CC_FLAGS) $(CC_DEBUG_FLAGS) -l$(LIBS) -o program $(OBJS)
 	lldb program
 
+.PHONY: clean
+clean:
+	rm -f *.o $(TARGET)
+	rm -rf *.dSYM
