@@ -4,27 +4,24 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 #include <unistd.h>
 
-// Declarations
 void setup();
 void dir_forward(WINDOW *menu_win);
-void update_file_size(char *name, const int *iter);
+void get_dir_info(WINDOW *menu_win);
 void print_menu(WINDOW *menu_win, int highlight);
 int handle_input(WINDOW *menu_win);
-void get_dir_info(WINDOW *menu_win);
 
-// Macros
 #define MAX_FILE_NUMBER 100
 #define MAX_FILE_NAME_SIZE 100
-#define FILE_SIZE_OFFSET 40
-#define LEFT_PADDING 2
+#define OFFSET 40
 
-// Global state instead of passing struct*'s around
-char *file_names[MAX_FILE_NUMBER];
-char *file_sizes[MAX_FILE_NUMBER];
-int number_of_files = 0;
-int current_selection = 1;
+char *file_list[MAX_FILE_NUMBER];
+intmax_t file_size_list[MAX_FILE_NUMBER] = {};
+int file_list_lenght = 0;
+
+int highlight = 1;
 
 int main() {
   WINDOW *menu_win;
@@ -36,7 +33,8 @@ int main() {
   while (true) {
     if (state == 1)
       get_dir_info(menu_win);
-    print_menu(menu_win, current_selection);
+    wclear(menu_win);
+    print_menu(menu_win, highlight);
 
     state = handle_input(menu_win);
     if (state == 2)
@@ -47,69 +45,41 @@ int main() {
 void setup() {
   initscr();
   curs_set(0);
+  clear();
   noecho();
 }
 
 void dir_forward(WINDOW *menu_win) {
-  char *selection = file_names[(current_selection - 1)];
+  char *selection = file_list[(highlight - 1)];
   chdir(selection);
-}
-
-void update_file_size(char *name, const int *iter) {
-  FILE *fp;
-  char *buf[MAX_FILE_NAME_SIZE];
-  char command[MAX_FILE_NAME_SIZE];
-  strcpy(command, "sudo /usr/bin/du -bd0 -h ");
-  strcat(command, name);
-  strcat(command, " | awk '$0=$1'");
-  fp = popen(command, "r");
-  fgets(buf, sizeof(buf), fp);
-  strcpy(file_sizes[*iter], buf);
-  pclose(fp);
 }
 
 void get_dir_info(WINDOW *menu_win) {
   DIR *d;
   struct dirent *dir;
+  struct stat stat_buffer;
 
   // Free up string array
-  for (int i = 0; i < number_of_files; i++) {
-    free(file_names[i]);
-    free(file_sizes[i]);
+  for (int i = 0; i < file_list_lenght; i++) {
+    free(file_list[i]);
   }
 
   d = opendir(".");
   int iter = 0;
-  number_of_files = 0;
+  file_list_lenght = 0;
   if (d) {
     while ((dir = readdir(d)) != NULL) {
-      file_names[iter] = malloc(MAX_FILE_NAME_SIZE * sizeof(char));
-      strcpy(file_names[iter], dir->d_name);
+      file_list[iter] = malloc(MAX_FILE_NAME_SIZE * sizeof(char));
+      strcpy(file_list[iter], dir->d_name);
 
-      file_sizes[iter] = malloc(MAX_FILE_NAME_SIZE * sizeof(char));
-      update_file_size(dir->d_name, &iter);
+      stat(dir->d_name, &stat_buffer);
+      file_size_list[iter] = stat_buffer.st_size;
 
-      number_of_files++;
+      file_list_lenght++;
       iter++;
     }
     closedir(d);
   }
-}
-
-void print_menu(WINDOW *menu_win, int highlight) {
-  wclear(menu_win);
-
-  int col = 2;
-  for (int i = 0; i < number_of_files; ++i) {
-    if (highlight == i + 1) /* High light the present choice */
-      wattron(menu_win, A_REVERSE);
-    mvwprintw(menu_win, col, LEFT_PADDING, "%s", file_names[i]);
-    mvwprintw(menu_win, col, LEFT_PADDING + FILE_SIZE_OFFSET, "%s",
-              file_sizes[i]);
-    wattroff(menu_win, A_REVERSE);
-    ++col;
-  }
-  box(menu_win, 0, 0);
 }
 
 // Return values
@@ -123,37 +93,72 @@ int handle_input(WINDOW *menu_win) {
     endwin();
     return 2;
   case KEY_UP:
-    if (current_selection == 1)
-      current_selection = number_of_files;
+    if (highlight == 1)
+      highlight = file_list_lenght;
     else
-      --current_selection;
+      --highlight;
     break;
   case 'k': // Same as KEY_UP
-    if (current_selection == 1)
-      current_selection = number_of_files;
+    if (highlight == 1)
+      highlight = file_list_lenght;
     else
-      --current_selection;
+      --highlight;
     break;
   case KEY_DOWN:
-    if (current_selection == number_of_files)
-      current_selection = 1;
+    if (highlight == file_list_lenght)
+      highlight = 1;
     else
-      ++current_selection;
+      ++highlight;
     break;
   case 'j':
-    if (current_selection == number_of_files)
-      current_selection = 1;
+    if (highlight == file_list_lenght)
+      highlight = 1;
     else
-      ++current_selection;
+      ++highlight;
     break;
   case 'l':
     dir_forward(menu_win);
-    current_selection = 1;
+    highlight = 1;
     return 1;
+    break;
   case 'h':
     chdir("..");
-    current_selection = 1;
+    highlight = 1;
     return 1;
+    break;
+  default:
+    refresh();
+    break;
   }
   return 0;
+}
+
+void print_menu(WINDOW *menu_win, int highlight) {
+  int x, y, i;
+
+  x = 2;
+  y = 2;
+  wattroff(menu_win, A_REVERSE);
+  box(menu_win, 0, 0);
+  for (i = 0; i < file_list_lenght; ++i) {
+    if (highlight == i + 1) /* High light the present choice */
+      wattron(menu_win, A_REVERSE);
+    mvwprintw(menu_win, y, x, "%s", file_list[i]);
+    mvwprintw(menu_win, y, x + OFFSET, "%jd", file_size_list[i]);
+    wattroff(menu_win, A_REVERSE);
+    ++y;
+  }
+  wrefresh(menu_win);
+}
+
+// https://programanddesign.com/cpp/human-readable-file-size-in-c/
+char *readable_fs(double size /*in bytes*/, char *buf) {
+  int i = 0;
+  const char *units[] = {"B", "kB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"};
+  while (size > 1024) {
+    size /= 1024;
+    i++;
+  }
+  sprintf(buf, "%.*f %s", i, size, units[i]);
+  return buf;
 }
