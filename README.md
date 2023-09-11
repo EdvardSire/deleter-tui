@@ -4,7 +4,7 @@ A minimal [ncurses](https://invisible-island.net/ncurses/announce.html) file nav
 vim-style keybindings that reports recursive file size.
 
 <p align="center">
-<img src="images/ wkeyboard.png" width="70%">
+<img src="images/preview.png" width="70%">
 </p>
 
 ### Todo
