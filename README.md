@@ -9,6 +9,7 @@ vim-style keybindings that reports recursive file size.
 
 ### Todo
 
-- [ ] Migrate to du c implementation
+~~Migrate to du c implementation~~
+
 - [ ] Rewrite without global variables
 - [ ] Reduce memory footprint?
