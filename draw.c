@@ -69,6 +69,8 @@ void get_dir_info(WINDOW *menu_win) {
   file_list_lenght = 0;
   if (d) {
     while ((dir = readdir(d)) != NULL) {
+      // char *foo;
+      // popen("du .", foo);
       file_list[iter] = malloc(MAX_FILE_NAME_SIZE * sizeof(char));
       strcpy(file_list[iter], dir->d_name);
 

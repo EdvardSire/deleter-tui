@@ -8,15 +8,15 @@ LIBS := ncurses
 TARGET := program
 
 all: $(TARGET)
+	./program
 
 $(TARGET): $(OBJS)
-	$(CC) $(CC_FLAGS) -l$(LIBS) -o $@ $(OBJS)
-	./program
+	$(CC) $(CC_FLAGS) $(CC_DEBUG_FLAGS) -l$(LIBS) -o $@ $(OBJS)
 
 # draw.o:
 # 	$(CC) $(CC_FLAGS) -c draw.c -o draw.o
 %.o: %.c
-	$(CC) $(CC_FLAGS) -c $< -o $@
+	$(CC) $(CC_FLAGS) $(CC_DEBUG_FLAGS) -c $< -o $@
 
 .PHONY: debug
 debug:
